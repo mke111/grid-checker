@@ -33,6 +33,7 @@
   <% } else { %>
     <span style="color:green">（未超时）</span>
   <% } %>
+  <br><small style="color:#999">（目标系统返回<%= stats.targetRecordsCount || 0 %>条记录）</small>
 </p>
 
 <% if (stats.isAfterDeadline && overdueList && overdueList.length > 0) { %>

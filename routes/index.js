@@ -64,7 +64,8 @@ router.get('/', async (req, res) => {
       overdue: overdue.length,
       pending: pending.length,
       isAfterDeadline,
-      checkEndTime
+      checkEndTime,
+      targetRecordsCount: checkData.records.length // 调试用
     };
 
     // 传给前端的已填写列表只显示本地在岗人员中已填写的
