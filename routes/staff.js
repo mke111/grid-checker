@@ -11,7 +11,6 @@ router.get('/', (req, res) => {
   
   let staff;
   if (q) {
-    // 按姓名或手机号搜索
     staff = db.prepare(`
       SELECT s.*, COALESCE(ds.status, 'oncall') as status
       FROM staff s
@@ -45,7 +44,7 @@ router.post('/delete', (req, res) => {
   res.redirect('/staff');
 });
 
-// 切换在岗/休假状态
+// 切换在岗/休假
 router.post('/status', (req, res) => {
   const { staff_id, date, status } = req.body;
   const today = date || new Date().toISOString().slice(0, 10);
@@ -54,12 +53,11 @@ router.post('/status', (req, res) => {
   res.redirect('/staff');
 });
 
-// 批量设置状态
+// 批量设置
 router.post('/batch-status', (req, res) => {
   const { status, date } = req.body;
   const today = date || new Date().toISOString().slice(0, 10);
   
-  // 获取所有人员，设置状态
   const allStaff = db.prepare('SELECT id FROM staff').all();
   const insert = db.prepare('INSERT OR REPLACE INTO daily_status (date, staff_id, status) VALUES (?, ?, ?)');
   
@@ -93,16 +91,44 @@ router.post('/import', upload.single('file'), (req, res) => {
   }
 });
 
-// API: 人员列表
-router.get('/api', (req, res) => {
-  const { q } = req.query;
-  let rows;
-  if (q) {
-    rows = db.prepare('SELECT * FROM staff WHERE name LIKE ? OR phone LIKE ?').all(`%${q}%`, `%${q}%`);
-  } else {
-    rows = db.prepare('SELECT * FROM staff ORDER BY id').all();
+// 从目标系统同步人员
+router.post('/sync', async (req, res) => {
+  try {
+    const targetAccount = db.prepare('SELECT * FROM target_accounts WHERE is_active=1 LIMIT 1').get();
+    if (!targetAccount) {
+      return res.json({ ok: false, error: '请先配置目标系统账号' });
+    }
+
+    const { fetchCheckRecords } = require('../services/targetApi');
+    const today = new Date().toISOString().slice(0, 10);
+    const { records } = await fetchCheckRecords(targetAccount, today);
+    
+    // 去重获取所有人员
+    const staffMap = new Map();
+    records.forEach(r => {
+      const key = r.PHONE || r.CREATE_USER;
+      if (key && !staffMap.has(key)) {
+        staffMap.set(key, {
+          name: r.CREATE_USER,
+          phone: r.PHONE,
+          department: r.DEPT_NAME,
+          position: r.JOB_NAME
+        });
+      }
+    });
+
+    // 插入本地数据库
+    const insert = db.prepare('INSERT OR IGNORE INTO staff (name, phone, department, position) VALUES (?, ?, ?, ?)');
+    let count = 0;
+    for (const s of staffMap.values()) {
+      insert.run(s.name, s.phone, s.department, s.position);
+      count++;
+    }
+
+    res.json({ ok: true, count });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
   }
-  res.json(rows);
 });
 
 module.exports = router;

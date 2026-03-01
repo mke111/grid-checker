@@ -12,30 +12,37 @@
 </div>
 
 <div class="card">
-  <h3>搜索</h3>
-  <form method="GET" action="/staff" class="inline-form">
-    <input type="text" name="q" placeholder="按姓名或手机号搜索" value="<%= q %>">
-    <button type="submit" class="btn btn-blue">搜索</button>
-    <a href="/staff" class="btn btn-gray">清除</a>
+  <h3>从目标系统同步</h3>
+  <form method="POST" action="/staff/sync" target="_blank">
+    <button type="submit" class="btn btn-blue">同步今日人员</button>
   </form>
+  <p class="hint">从目标系统获取今日有记录的人员，添加到本地</p>
 </div>
 
 <div class="card">
   <h3>批量操作</h3>
   <form method="POST" action="/staff/batch-status" class="inline-form">
     <input type="date" name="date" value="<%= date %>">
-    <button type="submit" name="status" value="oncall" class="btn btn-green">全部设为在岗</button>
-    <button type="submit" name="status" value="leave" class="btn btn-gray">全部设为休假</button>
+    <button type="submit" name="status" value="oncall" class="btn btn-green">全部在岗</button>
+    <button type="submit" name="status" value="leave" class="btn btn-gray">全部休假</button>
   </form>
 </div>
 
 <div class="card">
-  <h3>Excel 批量导入</h3>
+  <h3>搜索</h3>
+  <form method="GET" action="/staff" class="inline-form">
+    <input type="text" name="q" placeholder="姓名或手机号" value="<%= q %>">
+    <button type="submit" class="btn btn-blue">搜索</button>
+  </form>
+</div>
+
+<div class="card">
+  <h3>Excel 导入</h3>
   <form method="POST" action="/staff/import" enctype="multipart/form-data" class="inline-form">
     <input type="file" name="file" accept=".xlsx,.xls" required>
     <button type="submit" class="btn btn-blue">导入</button>
   </form>
-  <p class="hint">Excel 需包含"姓名"和"手机号"列（可选：部门、职务）</p>
+  <p class="hint">Excel 需包含"姓名"列（可选：手机号、部门、职务）</p>
 </div>
 
 <div class="card">
@@ -44,7 +51,7 @@
     <thead><tr><th>姓名</th><th>手机号</th><th>部门</th><th>职务</th><th>状态</th><th>操作</th></tr></thead>
     <tbody>
       <% if (staff.length === 0) { %>
-        <tr><td colspan="6" style="text-align:center;color:#888">暂无人员，请添加或导入</td></tr>
+        <tr><td colspan="6" style="text-align:center;color:#888">暂无人员，请添加或从目标系统同步</td></tr>
       <% } %>
       <% staff.forEach(s => { %>
         <tr>
@@ -58,7 +65,7 @@
               <input type="hidden" name="date" value="<%= date %>">
               <% if (s.status === 'oncall') { %>
                 <input type="hidden" name="status" value="leave">
-                <button type="submit" class="btn btn-green btn-sm">在岗 ✓</button>
+                <button type="submit" class="btn btn-green btn-sm">在岗</button>
               <% } else { %>
                 <input type="hidden" name="status" value="oncall">
                 <button type="submit" class="btn btn-gray btn-sm">休假</button>
@@ -66,9 +73,9 @@
             </form>
           </td>
           <td>
-            <form method="POST" action="/staff/delete" style="display:inline" onsubmit="return confirm('确认删除？')">
+            <form method="POST" action="/staff/delete" style="display:inline" onsubmit="return confirm('删除？')">
               <input type="hidden" name="id" value="<%= s.id %>">
-              <button type="submit" class="btn btn-red btn-sm">删除</button>
+              <button type="submit" class="btn btn-red btn-sm">删</button>
             </form>
           </td>
         </tr>
