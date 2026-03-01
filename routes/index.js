@@ -2,50 +2,20 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
-router.get('/', async (req, res) => {
+router.get('/', (req, res) => {
   const today = new Date().toISOString().slice(0, 10);
-
   try {
-    const onDutyCount = await new Promise((resolve, reject) => {
-      db.get('SELECT COUNT(*) as cnt FROM staff WHERE status = "on_duty"', (err, row) => {
-        if (err) reject(err); else resolve(row.cnt);
-      });
-    });
+    const total = db.prepare('SELECT COUNT(*) as cnt FROM staff').get().cnt;
+    const oncall = db.prepare("SELECT COUNT(*) as cnt FROM daily_status WHERE date = ? AND status = 'oncall'").get(today).cnt;
+    const filled = db.prepare("SELECT COUNT(*) as cnt FROM daily_status WHERE date = ? AND status = 'oncall'").get(today).cnt;
+    const unfilled = Math.max(0, oncall - filled);
+    const overdue = db.prepare("SELECT COUNT(*) as cnt FROM staff s WHERE NOT EXISTS (SELECT 1 FROM daily_status ds WHERE ds.staff_id = s.id AND ds.date = ? AND ds.status = 'oncall')").get(today).cnt;
+    const lastSync = db.prepare("SELECT value FROM settings WHERE key = 'last_sync'").get()?.value || null;
 
-    const filledCount = await new Promise((resolve, reject) => {
-      db.get(
-        'SELECT COUNT(*) as cnt FROM daily_records WHERE date = ? AND filled = 1',
-        [today], (err, row) => { if (err) reject(err); else resolve(row.cnt); }
-      );
-    });
-
-    const unfilledCount = await new Promise((resolve, reject) => {
-      db.get(
-        'SELECT COUNT(*) as cnt FROM daily_records WHERE date = ? AND filled = 0',
-        [today], (err, row) => { if (err) reject(err); else resolve(row.cnt); }
-      );
-    });
-
-    // 逾期：在岗但今日无记录
-    const overdueCount = await new Promise((resolve, reject) => {
-      db.get(
-        `SELECT COUNT(*) as cnt FROM staff
-         WHERE status = "on_duty"
-         AND id NOT IN (SELECT staff_id FROM daily_records WHERE date = ?)`,
-        [today], (err, row) => { if (err) reject(err); else resolve(row.cnt); }
-      );
-    });
-
-    res.render('index', {
-      today,
-      onDutyCount,
-      filledCount,
-      unfilledCount,
-      overdueCount
-    });
+    res.render('index', { stats: { total, oncall, filled, unfilled, overdue, lastSync } });
   } catch (err) {
     console.error(err);
-    res.status(500).send('Server Error');
+    res.status(500).send('Server Error: ' + err.message);
   }
 });
 
