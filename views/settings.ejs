@@ -2,23 +2,27 @@
 
 <div class="card">
   <h3>检查时间设置</h3>
-  <form method="POST" action="/settings" class="form-group">
-    <label>检查开始时间</label>
-    <input type="time" name="check_start" value="<%= settings.check_start || '08:00' %>">
-    <label>检查结束时间</label>
-    <input type="time" name="check_end" value="<%= settings.check_end || '20:00' %>">
-    <button type="submit" class="btn btn-green">保存</button>
+  <form method="POST" action="/settings">
+    <div class="form-group">
+      <label>检查截止时间</label>
+      <input type="time" name="check_end" value="<%= settings.check_end || '20:00' %>" class="form-control" style="width:200px">
+      <p class="hint">超过此时间未填写的人员将显示为"逾期"</p>
+    </div>
+    <button type="submit" class="btn btn-primary">保存</button>
   </form>
 </div>
 
 <div class="card">
-  <h3>自动通知设置</h3>
-  <form method="POST" action="/settings" class="form-group">
-    <label>通知时间（每天自动执行）</label>
-    <input type="time" name="notify_time" value="<%= settings.notify_time || '20:00' %>">
-    <label>Webhook 地址（可选，通知发送到指定URL）</label>
-    <input type="text" name="notify_webhook" value="<%= settings.notify_webhook || '' %>" placeholder="https://...">
-    <button type="submit" class="btn btn-green">保存</button>
+  <h3>通知设置</h3>
+  <form method="POST" action="/settings">
+    <div class="form-group">
+      <label>自动通知时间</label>
+      <input type="time" name="notify_time" value="<%= settings.notify_time || '20:00' %>" class="form-control" style="width:200px">
+    </div>
+    <div class="form-group">
+      <label>Webhook 地址</label>
+      <input type="text" name="notify_webhook" value="<%= settings.notify_webhook || '' %>" class="form-control" placeholder="https://...">
+    </div>
+    <button type="submit" class="btn btn-primary">保存</button>
   </form>
-  <p class="hint">通知时间应为目标系统第二天数据生成后，建议 20:00</p>
 </div>

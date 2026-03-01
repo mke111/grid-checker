@@ -6,15 +6,28 @@ const dayjs = require('dayjs');
 
 router.get('/', async (req, res) => {
   const today = new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const currentHour = now.getHours();
+  const currentMinute = now.getMinutes();
   
   try {
+    // 获取设置
+    const settings = {};
+    const rows = db.prepare('SELECT * FROM settings').all();
+    rows.forEach(r => settings[r.key] = r.value);
+    
+    const checkEndTime = settings.check_end || '20:00'; // 默认20:00
+    const [endHour, endMinute] = checkEndTime.split(':').map(Number);
+    
+    // 是否已超过截止时间
+    const isAfterDeadline = currentHour > endHour || (currentHour === endHour && currentMinute >= endMinute);
+
     // 获取目标账号
     const targetAccount = db.prepare('SELECT * FROM target_accounts WHERE is_active=1 LIMIT 1').get();
     
     let checkData = { records: [], warning: 0, overdue: 0 };
     
     if (targetAccount) {
-      // 获取今日检查记录
       const { records } = await fetchCheckRecords(targetAccount, today);
       const { records: warnings } = await fetchWarningRecords(targetAccount, today);
       const { records: overdues } = await fetchOverdueRecords(targetAccount, today);
@@ -28,36 +41,31 @@ router.get('/', async (req, res) => {
       WHERE ds.status = 'oncall'
     `).all(today);
 
-    // 获取本地休假人员
-    const leaveStaff = db.prepare(`
-      SELECT s.* FROM staff s
-      JOIN daily_status ds ON ds.staff_id = s.id AND ds.date = ?
-      WHERE ds.status = 'leave'
-    `).all(today);
-
-    // 已填写的人员（手机号或名字匹配）
+    // 已填写
     const filledPhones = new Set(checkData.records.map(r => r.PHONE));
     const filledNames = new Set(checkData.records.map(r => r.CREATE_USER));
     
-    // 在岗但未填写
-    const unfilled = oncallStaff.filter(s => 
-      !filledPhones.has(s.phone) && !filledNames.has(s.name)
-    );
+    // 未填写
+    const unfilled = oncallStaff.filter(s => !filledPhones.has(s.phone) && !filledNames.has(s.name));
+    
+    // 逾期 = 超过截止时间且未填写
+    const overdue = isAfterDeadline ? unfilled : [];
+    const pending = isAfterDeadline ? [] : unfilled; // 未到截止时间 = 待填写
 
-    // 统计
     const stats = { 
       oncall: oncallStaff.length,
-      leave: leaveStaff.length,
-      total: oncallStaff.length + leaveStaff.length,
       filled: checkData.records.length, 
       unfilled: unfilled.length,
-      warning: checkData.warning,
-      overdue: checkData.overdue
+      overdue: overdue.length,
+      pending: pending.length,
+      isAfterDeadline,
+      checkEndTime
     };
 
     res.render('index', { 
       stats, 
-      unfilledList: unfilled,
+      overdueList: overdue,
+      pendingList: pending,
       filledList: checkData.records,
       date: today,
       hasAccount: !!targetAccount
@@ -68,7 +76,6 @@ router.get('/', async (req, res) => {
   }
 });
 
-// 手动触发检查
 router.post('/run-check', async (req, res) => {
   try {
     const today = new Date().toISOString().slice(0, 10);
@@ -79,15 +86,7 @@ router.post('/run-check', async (req, res) => {
     }
 
     const { records } = await fetchCheckRecords(targetAccount, today);
-    const { records: warnings } = await fetchWarningRecords(targetAccount, today);
-    const { records: overdues } = await fetchOverdueRecords(targetAccount, today);
-    
-    res.json({ 
-      ok: true, 
-      total: records.length,
-      warning: warnings.length,
-      overdue: overdues.length
-    });
+    res.json({ ok: true, total: records.length });
   } catch(e) {
     res.status(500).json({ ok: false, error: e.message });
   }

@@ -1,42 +1,47 @@
 <h2>今日看板 <span style="font-size:14px;color:#888;margin-left:10px"><%= date %></span></h2>
 
-<% if (!hasAccount) { %>
-<div class="card" style="border-left:4px solid #e74c3c;background:#fef9e7">
-  <h3 style="color:#e74c3c">⚠️ 请先配置目标系统账号</h3>
-  <p>请到 <a href="/accounts">账号管理</a> 页面添加目标系统账号</p>
-</div>
-<% } %>
-
 <div class="stats-grid">
   <div class="card stat-card">
     <div class="stat-num"><%= stats.oncall %></div>
-    <div class="stat-label">在岗</div>
-  </div>
-  <div class="card stat-card gray">
-    <div class="stat-num"><%= stats.leave %></div>
-    <div class="stat-label">休假</div>
+    <div class="stat-label">在岗人数</div>
   </div>
   <div class="card stat-card green">
     <div class="stat-num"><%= stats.filled %></div>
     <div class="stat-label">已填写</div>
   </div>
+  <% if (stats.isAfterDeadline) { %>
   <div class="card stat-card red">
-    <div class="stat-num"><%= stats.unfilled %></div>
-    <div class="stat-label">未填写</div>
+    <div class="stat-num"><%= stats.overdue %></div>
+    <div class="stat-label">已逾期</div>
   </div>
+  <% } else { %>
+  <div class="card stat-card orange">
+    <div class="stat-num"><%= stats.pending %></div>
+    <div class="stat-label">待填写</div>
+  </div>
+  <% } %>
   <div class="card stat-card orange">
     <div class="stat-num"><%= stats.warning %></div>
     <div class="stat-label">预警</div>
   </div>
 </div>
 
-<% if (unfilledList && unfilledList.length > 0) { %>
-<div class="card" style="margin-top:16px;border-left:4px solid #e74c3c">
-  <h3 style="color:#e74c3c">⚠️ 未填写人员（在岗但目标系统无记录）</h3>
+<p style="color:#666;margin-bottom:16px">
+  检查截止时间：<%= stats.checkEndTime %> 
+  <% if (stats.isAfterDeadline) { %>
+    <span style="color:red">（已超时）</span>
+  <% } else { %>
+    <span style="color:green">（未超时）</span>
+  <% } %>
+</p>
+
+<% if (stats.isAfterDeadline && overdueList && overdueList.length > 0) { %>
+<div class="card" style="border-left:4px solid #e74c3c">
+  <h3 style="color:#e74c3c">⚠️ 逾期未填写（<%= overdueList.length %>人）</h3>
   <table>
     <thead><tr><th>姓名</th><th>手机号</th><th>部门</th><th>职务</th></tr></thead>
     <tbody>
-      <% unfilledList.forEach(s => { %>
+      <% overdueList.forEach(s => { %>
         <tr>
           <td><%= s.name %></td>
           <td><%= s.phone || '-' %></td>
@@ -49,8 +54,27 @@
 </div>
 <% } %>
 
-<% if (unfilledList && unfilledList.length === 0 && hasAccount && stats.oncall > 0) { %>
-<div class="card" style="margin-top:16px;border-left:4px solid #27ae60;background:#e8f8f5">
+<% if (!stats.isAfterDeadline && pendingList && pendingList.length > 0) { %>
+<div class="card" style="border-left:4px solid #f39c12">
+  <h3 style="color:#f39c12">⏳ 待填写（<%= pendingList.length %>人）</h3>
+  <table>
+    <thead><tr><th>姓名</th><th>手机号</th><th>部门</th><th>职务</th></tr></thead>
+    <tbody>
+      <% pendingList.forEach(s => { %>
+        <tr>
+          <td><%= s.name %></td>
+          <td><%= s.phone || '-' %></td>
+          <td><%= s.department || '-' %></td>
+          <td><%= s.position || '-' %></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+<% } %>
+
+<% if (stats.isAfterDeadline && overdueList && overdueList.length === 0 && stats.oncall > 0) { %>
+<div class="card" style="border-left:4px solid #27ae60;background:#e8f8f5">
   <h3 style="color:#27ae60">✅ 全部在岗人员已填写！</h3>
 </div>
 <% } %>
@@ -60,12 +84,11 @@
   <form method="POST" action="/run-check" target="_blank">
     <button type="submit" class="btn btn-green">刷新今日数据</button>
   </form>
-  <p class="hint">从目标系统获取最新检查记录</p>
 </div>
 
 <% if (filledList && filledList.length > 0) { %>
 <div class="card" style="margin-top:16px">
-  <h3>已填写人员（<%= filledList.length %>人）</h3>
+  <h3>已填写（<%= filledList.length %>人）</h3>
   <table>
     <thead><tr><th>姓名</th><th>手机号</th><th>部门</th><th>结果</th></tr></thead>
     <tbody>
