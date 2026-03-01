@@ -1,0 +1,26 @@
+<h2>今日看板</h2>
+<div class="stats-grid">
+  <div class="card stat-card">
+    <div class="stat-num"><%= stats.total %></div>
+    <div class="stat-label">总人数</div>
+  </div>
+  <div class="card stat-card green">
+    <div class="stat-num"><%= stats.oncall %></div>
+    <div class="stat-label">今日在岗</div>
+  </div>
+  <div class="card stat-card blue">
+    <div class="stat-num"><%= stats.filled %></div>
+    <div class="stat-label">已填写</div>
+  </div>
+  <div class="card stat-card red">
+    <div class="stat-num"><%= stats.unfilled %></div>
+    <div class="stat-label">未填写</div>
+  </div>
+  <div class="card stat-card orange">
+    <div class="stat-num"><%= stats.overdue %></div>
+    <div class="stat-label">逾期</div>
+  </div>
+</div>
+<% if (stats.lastSync) { %>
+<p class="hint">上次同步：<%= stats.lastSync %></p>
+<% } %>

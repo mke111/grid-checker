@@ -1,0 +1,26 @@
+<h2>系统设置</h2>
+<div class="card">
+  <form method="POST" action="/settings">
+    <div class="form-group">
+      <label>检查开始时间</label>
+      <input type="time" name="check_start" value="<%= settings.check_start || '08:00' %>">
+    </div>
+    <div class="form-group">
+      <label>检查结束时间</label>
+      <input type="time" name="check_end" value="<%= settings.check_end || '20:00' %>">
+    </div>
+    <div class="form-group">
+      <label>每日通知时间（北京时间）</label>
+      <input type="time" name="notify_time" value="<%= settings.notify_time || '20:00' %>">
+    </div>
+    <div class="form-group">
+      <label>Webhook 通知地址（企业微信/钉钉）</label>
+      <input type="url" name="notify_webhook" value="<%= settings.notify_webhook || '' %>" placeholder="https://qyapi.weixin.qq.com/...">
+    </div>
+    <div class="form-group">
+      <label>目标系统地址</label>
+      <input type="text" name="target_url" value="<%= settings.target_url || 'http://221.181.9.210:17027' %>">
+    </div>
+    <button type="submit" class="btn btn-green">保存设置</button>
+  </form>
+</div>
