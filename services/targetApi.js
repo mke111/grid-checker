@@ -6,7 +6,6 @@ async function loginAndGetCookies(account) {
   const BASE_URL = account.base_url;
 
   try {
-    // 1. 获取初始cookie
     const res1 = await fetch(`${BASE_URL}/tms/index`, { 
       redirect: 'follow',
       headers: { 'User-Agent': 'Mozilla/5.0' }
@@ -14,11 +13,10 @@ async function loginAndGetCookies(account) {
     const cookies1 = res1.headers.raw()['set-cookie'] || [];
     cookies1.forEach(c => {
       const [pair] = c.split(';');
-      const [k, v] = pair.trim().split('=');
-      if (k && v !== undefined) jar[k.trim()] = v.trim();
+      const [k, v] = pair.split('=');
+      if (k && v) jar[k.trim()] = v.trim();
     });
 
-    // 2. 登录
     const loginUrl = res1.url.includes('/cas/login') 
       ? res1.url 
       : `${BASE_URL}/cas/login?service=${encodeURIComponent(BASE_URL + '/tms/index')}&dpAppCode=PROJECT.TMS`;
@@ -41,8 +39,8 @@ async function loginAndGetCookies(account) {
     const cookies2 = res2.headers.raw()['set-cookie'] || [];
     cookies2.forEach(c => {
       const [pair] = c.split(';');
-      const [k, v] = pair.trim().split('=');
-      if (k && v !== undefined) jar[k.trim()] = v.trim();
+      const [k, v] = pair.split('=');
+      if (k && v) jar[k.trim()] = v.trim();
     });
 
     return { jar, baseUrl: BASE_URL, ok: Object.keys(jar).length > 0 };
@@ -53,10 +51,9 @@ async function loginAndGetCookies(account) {
 
 // 获取检查记录
 async function fetchCheckRecords(account, date) {
-  const { jar, baseUrl, ok } = await loginAndGetCookies(account);
-  if (!ok) return { records: [], error: '登录失败' };
+  const { jar, baseUrl } = await loginAndGetCookies(account);
+  if (!jar.JSESSIONID) return { records: [], error: '登录失败' };
 
-  // 检查记录ID: 164480169233200777
   const url = `${baseUrl}/tms/moudle/report/164480169233200777/pagingData?startDate=${date}&endDate=${date}&pageSize=1000&pageNum=1`;
   
   try {
@@ -79,10 +76,9 @@ async function fetchCheckRecords(account, date) {
 
 // 获取预警记录
 async function fetchWarningRecords(account, date) {
-  const { jar, baseUrl, ok } = await loginAndGetCookies(account);
-  if (!ok) return { records: [], error: '登录失败' };
+  const { jar, baseUrl } = await loginAndGetCookies(account);
+  if (!jar.JSESSIONID) return { records: [], error: '登录失败' };
 
-  // 预警记录ID: 164811368582200179
   const url = `${baseUrl}/tms/moudle/report/164811368582200179/pagingData?startDate=${date}&endDate=${date}&pageSize=1000&pageNum=1`;
   
   try {
@@ -105,10 +101,9 @@ async function fetchWarningRecords(account, date) {
 
 // 获取逾期记录
 async function fetchOverdueRecords(account, date) {
-  const { jar, baseUrl, ok } = await loginAndGetCookies(account);
-  if (!ok) return { records: [], error: '登录失败' };
+  const { jar, baseUrl } = await loginAndGetCookies(account);
+  if (!jar.JSESSIONID) return { records: [], error: '登录失败' };
 
-  // 逾期记录ID: 164725306431302680
   const url = `${baseUrl}/tms/moudle/report/164725306431302680/pagingData?startDate=${date}&endDate=${date}&pageSize=1000&pageNum=1`;
   
   try {
@@ -129,9 +124,49 @@ async function fetchOverdueRecords(account, date) {
   }
 }
 
+// 获取目标系统所有人员（从检查记录中提取）
+async function fetchAllStaff(account) {
+  const { jar, baseUrl } = await loginAndGetCookies(account);
+  if (!jar.JSESSIONID) return { staff: [], error: '登录失败' };
+
+  // 获取最近30天的记录来提取所有人员
+  const url = `${baseUrl}/tms/moudle/report/164480169233200777/pagingData?startDate=2025-01-01&endDate=2026-12-31&pageSize=1000&pageNum=1`;
+  
+  try {
+    const res = await fetch(url, {
+      headers: { 
+        'Cookie': Object.entries(jar).map(([k,v]) => `${k}=${v}`).join('; '),
+        'User-Agent': 'Mozilla/5.0'
+      }
+    });
+    const data = await res.json();
+    
+    if (data.code === 'success' && data.data && data.data.list) {
+      // 去重提取人员
+      const staffMap = new Map();
+      data.data.list.forEach(r => {
+        const key = r.PHONE || r.CREATE_USER;
+        if (key && !staffMap.has(key)) {
+          staffMap.set(key, {
+            name: r.CREATE_USER,
+            phone: r.PHONE,
+            dept: r.DEPT_NAME,
+            job: r.JOB_NAME
+          });
+        }
+      });
+      return { staff: Array.from(staffMap.values()) };
+    }
+    return { staff: [], error: data.msg || '获取失败' };
+  } catch(e) {
+    return { staff: [], error: e.message };
+  }
+}
+
 module.exports = {
   loginAndGetCookies,
   fetchCheckRecords,
   fetchWarningRecords,
-  fetchOverdueRecords
+  fetchOverdueRecords,
+  fetchAllStaff
 };

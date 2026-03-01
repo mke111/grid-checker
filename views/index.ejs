@@ -1,9 +1,16 @@
 <h2>今日看板 <span style="font-size:14px;color:#888;margin-left:10px"><%= date %></span></h2>
 
+<% if (!hasAccount) { %>
+<div class="card" style="border-left:4px solid #e74c3c;background:#fef9e7">
+  <h3 style="color:#e74c3c">⚠️ 请先配置目标系统账号</h3>
+  <p>请到 <a href="/accounts">账号管理</a> 页面添加目标系统账号</p>
+</div>
+<% } %>
+
 <div class="stats-grid">
   <div class="card stat-card">
     <div class="stat-num"><%= stats.oncall %></div>
-    <div class="stat-label">今日在岗</div>
+    <div class="stat-label">应填写人数</div>
   </div>
   <div class="card stat-card green">
     <div class="stat-num"><%= stats.filled %></div>
@@ -25,7 +32,7 @@
 
 <% if (unfilledList && unfilledList.length > 0) { %>
 <div class="card" style="margin-top:16px;border-left:4px solid #e74c3c">
-  <h3 style="color:#e74c3c">⚠️ 未填写人员名单</h3>
+  <h3 style="color:#e74c3c">⚠️ 未填写人员名单（<%= unfilledList.length %>人）</h3>
   <table>
     <thead><tr><th>姓名</th><th>手机号</th><th>部门</th><th>职务</th></tr></thead>
     <tbody>
@@ -33,8 +40,8 @@
         <tr>
           <td><%= s.name %></td>
           <td><%= s.phone || '-' %></td>
-          <td><%= s.department || '-' %></td>
-          <td><%= s.position || '-' %></td>
+          <td><%= s.dept || '-' %></td>
+          <td><%= s.job || '-' %></td>
         </tr>
       <% }) %>
     </tbody>
@@ -42,48 +49,38 @@
 </div>
 <% } %>
 
-<% if (overdueList && overdueList.length > 0) { %>
-<div class="card" style="margin-top:16px;border-left:4px solid #9b59b6">
-  <h3 style="color:#9b59b6">⚠️ 逾期人员名单</h3>
-  <table>
-    <thead><tr><th>姓名</th><th>手机号</th><th>部门</th></tr></thead>
-    <tbody>
-      <% overdueList.forEach(s => { %>
-        <tr>
-          <td><%= s.name %></td>
-          <td><%= s.phone || '-' %></td>
-          <td><%= s.department || '-' %></td>
-        </tr>
-      <% }) %>
-    </tbody>
-  </table>
+<% if (unfilledList && unfilledList.length === 0 && hasAccount) { %>
+<div class="card" style="margin-top:16px;border-left:4px solid #27ae60;background:#e8f8f5">
+  <h3 style="color:#27ae60">✅ 全部人员已填写！</h3>
 </div>
 <% } %>
 
 <div class="card" style="margin-top:16px">
-  <h3>手动同步数据</h3>
+  <h3>同步数据</h3>
   <form method="POST" action="/run-check" target="_blank">
-    <button type="submit" class="btn btn-green">立即同步目标系统数据</button>
+    <button type="submit" class="btn btn-green">刷新今日数据</button>
   </form>
-  <p class="hint">点击按钮从目标系统获取最新检查记录</p>
+  <p class="hint">从目标系统获取最新检查记录</p>
 </div>
 
-<% if (recentLogs && recentLogs.length > 0) { %>
+<% if (filledList && filledList.length > 0) { %>
 <div class="card" style="margin-top:16px">
-  <h3>最近通知</h3>
+  <h3>已填写人员（<%= filledList.length %>人）</h3>
   <table>
-    <thead><tr><th>日期</th><th>在岗</th><th>已填</th><th>未填</th><th>预警</th><th>逾期</th></tr></thead>
+    <thead><tr><th>姓名</th><th>手机号</th><th>部门</th><th>检查结果</th></tr></thead>
     <tbody>
-      <% recentLogs.forEach(l => { %>
+      <% filledList.slice(0, 20).forEach(s => { %>
         <tr>
-          <td><%= l.date %></td>
-          <td><%= l.oncall %></td>
-          <td><%= l.filled %></td>
-          <td style="color:<%= l.unfilled>0?'red':'inherit'%>"><%= l.unfilled %></td>
-          <td><%= l.overdue %></td>
+          <td><%= s.CREATE_USER %></td>
+          <td><%= s.PHONE %></td>
+          <td><%= s.DEPT_NAME %></td>
+          <td style="color:<%= s.COUNTS > 0 ? 'orange' : 'green' %>"><%= s.COUNTS > 0 ? '有隐患' : '正常' %></td>
         </tr>
       <% }) %>
     </tbody>
   </table>
+  <% if (filledList.length > 20) { %>
+    <p class="hint">还有 <%= filledList.length - 20 %> 条记录...</p>
+  <% } %>
 </div>
 <% } %>
