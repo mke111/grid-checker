@@ -2,7 +2,7 @@
 
 <div class="stats-grid">
   <div class="card stat-card">
-    <div class="stat-num"><%= stats.total %></div>
+    <div class="stat-num"><%= stats.oncall %></div>
     <div class="stat-label">今日在岗</div>
   </div>
   <div class="card stat-card green">
@@ -23,11 +23,49 @@
   </div>
 </div>
 
+<% if (unfilledList && unfilledList.length > 0) { %>
+<div class="card" style="margin-top:16px;border-left:4px solid #e74c3c">
+  <h3 style="color:#e74c3c">⚠️ 未填写人员名单</h3>
+  <table>
+    <thead><tr><th>姓名</th><th>手机号</th><th>部门</th><th>职务</th></tr></thead>
+    <tbody>
+      <% unfilledList.forEach(s => { %>
+        <tr>
+          <td><%= s.name %></td>
+          <td><%= s.phone || '-' %></td>
+          <td><%= s.department || '-' %></td>
+          <td><%= s.position || '-' %></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+<% } %>
+
+<% if (overdueList && overdueList.length > 0) { %>
+<div class="card" style="margin-top:16px;border-left:4px solid #9b59b6">
+  <h3 style="color:#9b59b6">⚠️ 逾期人员名单</h3>
+  <table>
+    <thead><tr><th>姓名</th><th>手机号</th><th>部门</th></tr></thead>
+    <tbody>
+      <% overdueList.forEach(s => { %>
+        <tr>
+          <td><%= s.name %></td>
+          <td><%= s.phone || '-' %></td>
+          <td><%= s.department || '-' %></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+<% } %>
+
 <div class="card" style="margin-top:16px">
-  <h3>手动检查</h3>
+  <h3>手动同步数据</h3>
   <form method="POST" action="/run-check" target="_blank">
     <button type="submit" class="btn btn-green">立即同步目标系统数据</button>
   </form>
+  <p class="hint">点击按钮从目标系统获取最新检查记录</p>
 </div>
 
 <% if (recentLogs && recentLogs.length > 0) { %>
@@ -43,7 +81,6 @@
           <td><%= l.filled %></td>
           <td style="color:<%= l.unfilled>0?'red':'inherit'%>"><%= l.unfilled %></td>
           <td><%= l.overdue %></td>
-          <td><%= l.message ? message : '' %></td>
         </tr>
       <% }) %>
     </tbody>

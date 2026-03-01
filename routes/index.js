@@ -44,10 +44,16 @@ router.get('/', async (req, res) => {
       overdue: checkData.overdue
     };
 
+    // 未填写人员名单
+    const unfilledList = oncallStaff.filter(s => !filledPhones.has(s.phone) && !filledNames.has(s.name));
+    
+    // 逾期人员名单（从逾期记录中获取）
+    const overdueList = []; // 需要从targetApi获取
+
     // 获取最近通知
     const recentLogs = db.prepare('SELECT * FROM notify_log ORDER BY created_at DESC LIMIT 5').all();
 
-    res.render('index', { stats, recentLogs, date: today });
+    res.render('index', { stats, unfilledList, overdueList, recentLogs, date: today });
   } catch (err) {
     console.error(err);
     res.status(500).send('Server Error: ' + err.message);
