@@ -41,9 +41,14 @@ router.get('/', async (req, res) => {
       WHERE ds.status = 'oncall'
     `).all(today);
 
-    // 已填写
+    // 已填写（在岗人员中有记录的）
     const filledPhones = new Set(checkData.records.map(r => r.PHONE));
     const filledNames = new Set(checkData.records.map(r => r.CREATE_USER));
+    
+    // 在岗人员中已填写的
+    const filled = oncallStaff.filter(s => 
+      filledPhones.has(s.phone) || filledNames.has(s.name)
+    );
     
     // 未填写
     const unfilled = oncallStaff.filter(s => !filledPhones.has(s.phone) && !filledNames.has(s.name));
@@ -54,7 +59,7 @@ router.get('/', async (req, res) => {
 
     const stats = { 
       oncall: oncallStaff.length,
-      filled: checkData.records.length, 
+      filled: filled.length, 
       unfilled: unfilled.length,
       overdue: overdue.length,
       pending: pending.length,
@@ -62,14 +67,8 @@ router.get('/', async (req, res) => {
       checkEndTime
     };
 
-    res.render('index', { 
-      stats, 
-      overdueList: overdue,
-      pendingList: pending,
-      filledList: checkData.records,
-      date: today,
-      hasAccount: !!targetAccount
-    });
+    // 传给前端的已填写列表只显示本地在岗人员中已填写的
+    const filledList = filled;
   } catch (err) {
     console.error(err);
     res.status(500).send('Server Error: ' + err.message);
