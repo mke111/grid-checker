@@ -1,14 +1,11 @@
-<h2>今日看板</h2>
+<h2>今日看板 <span style="font-size:14px;color:#888;margin-left:10px"><%= date %></span></h2>
+
 <div class="stats-grid">
   <div class="card stat-card">
     <div class="stat-num"><%= stats.total %></div>
-    <div class="stat-label">总人数</div>
-  </div>
-  <div class="card stat-card green">
-    <div class="stat-num"><%= stats.oncall %></div>
     <div class="stat-label">今日在岗</div>
   </div>
-  <div class="card stat-card blue">
+  <div class="card stat-card green">
     <div class="stat-num"><%= stats.filled %></div>
     <div class="stat-label">已填写</div>
   </div>
@@ -17,10 +14,39 @@
     <div class="stat-label">未填写</div>
   </div>
   <div class="card stat-card orange">
+    <div class="stat-num"><%= stats.warning %></div>
+    <div class="stat-label">预警记录</div>
+  </div>
+  <div class="card stat-card blue">
     <div class="stat-num"><%= stats.overdue %></div>
-    <div class="stat-label">逾期</div>
+    <div class="stat-label">逾期记录</div>
   </div>
 </div>
-<% if (stats.lastSync) { %>
-<p class="hint">上次同步：<%= stats.lastSync %></p>
+
+<div class="card" style="margin-top:16px">
+  <h3>手动检查</h3>
+  <form method="POST" action="/run-check" target="_blank">
+    <button type="submit" class="btn btn-green">立即同步目标系统数据</button>
+  </form>
+</div>
+
+<% if (recentLogs && recentLogs.length > 0) { %>
+<div class="card" style="margin-top:16px">
+  <h3>最近通知</h3>
+  <table>
+    <thead><tr><th>日期</th><th>在岗</th><th>已填</th><th>未填</th><th>预警</th><th>逾期</th></tr></thead>
+    <tbody>
+      <% recentLogs.forEach(l => { %>
+        <tr>
+          <td><%= l.date %></td>
+          <td><%= l.oncall %></td>
+          <td><%= l.filled %></td>
+          <td style="color:<%= l.unfilled>0?'red':'inherit'%>"><%= l.unfilled %></td>
+          <td><%= l.overdue %></td>
+          <td><%= l.message ? message : '' %></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
 <% } %>

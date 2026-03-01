@@ -1,21 +1,67 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const { fetchCheckRecords, fetchWarningRecords, fetchOverdueRecords } = require('../services/targetApi');
+const dayjs = require('dayjs');
 
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   const today = new Date().toISOString().slice(0, 10);
+  
   try {
-    const total = db.prepare('SELECT COUNT(*) as cnt FROM staff').get().cnt;
-    const oncall = db.prepare("SELECT COUNT(*) as cnt FROM daily_status WHERE date = ? AND status = 'oncall'").get(today).cnt;
-    const filled = db.prepare("SELECT COUNT(*) as cnt FROM daily_status WHERE date = ? AND status = 'oncall'").get(today).cnt;
-    const unfilled = Math.max(0, oncall - filled);
-    const overdue = db.prepare("SELECT COUNT(*) as cnt FROM staff s WHERE NOT EXISTS (SELECT 1 FROM daily_status ds WHERE ds.staff_id = s.id AND ds.date = ? AND ds.status = 'oncall')").get(today).cnt;
-    const lastSync = db.prepare("SELECT value FROM settings WHERE key = 'last_sync'").get()?.value || null;
+    // 获取在岗人员
+    const oncallStaff = db.prepare(`
+      SELECT s.* FROM staff s
+      JOIN daily_status ds ON ds.staff_id = s.id AND ds.date = ?
+      WHERE ds.status = 'oncall'
+    `).all(today);
 
-    res.render('index', { stats: { total, oncall, filled, unfilled, overdue, lastSync } });
+    // 获取目标账号
+    const targetAccount = db.prepare('SELECT * FROM target_accounts WHERE is_active=1 LIMIT 1').get();
+    
+    let checkData = { records: [], warning: 0, overdue: 0 };
+    
+    if (targetAccount) {
+      const { records } = await fetchCheckRecords(targetAccount, today);
+      const { records: warnings } = await fetchWarningRecords(targetAccount, today);
+      const { records: overdues } = await fetchOverdueRecords(targetAccount, today);
+      checkData = { records, warning: warnings.length, overdue: overdues.length };
+    }
+
+    // 统计
+    const filledPhones = new Set(checkData.records.map(r => r.PHONE));
+    const filledNames = new Set(checkData.records.map(r => r.CREATE_USER));
+    
+    const total = oncallStaff.length;
+    const filled = checkData.records.length;
+    const unfilled = oncallStaff.filter(s => !filledPhones.has(s.phone) && !filledNames.has(s.name)).length;
+
+    const stats = { 
+      total, 
+      oncall: total, 
+      filled, 
+      unfilled,
+      warning: checkData.warning,
+      overdue: checkData.overdue
+    };
+
+    // 获取最近通知
+    const recentLogs = db.prepare('SELECT * FROM notify_log ORDER BY created_at DESC LIMIT 5').all();
+
+    res.render('index', { stats, recentLogs, date: today });
   } catch (err) {
     console.error(err);
     res.status(500).send('Server Error: ' + err.message);
+  }
+});
+
+// 手动触发检查
+router.post('/run-check', async (req, res) => {
+  try {
+    const { runDailyCheck } = require('../services/dailyCheck');
+    const result = await runDailyCheck();
+    res.json({ ok: true, stats: result.stats, unfilled: result.unfilled.map(u => u.name) });
+  } catch(e) {
+    res.status(500).json({ ok: false, error: e.message });
   }
 });
 

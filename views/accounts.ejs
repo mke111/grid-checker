@@ -1,37 +1,52 @@
-<h2>账号管理</h2>
+<h2>目标系统账号管理</h2>
+
 <div class="card">
   <h3>添加账号</h3>
   <form method="POST" action="/accounts/add" class="inline-form">
-    <input type="text" name="label" placeholder="账号名称" required>
+    <input type="text" name="label" placeholder="名称（如：生产部）" required>
+    <input type="text" name="base_url" placeholder="目标系统地址" value="http://221.181.9.210:17027" required>
     <input type="text" name="username" placeholder="用户名" required>
     <input type="password" name="password" placeholder="密码" required>
     <button type="submit" class="btn btn-green">添加</button>
   </form>
 </div>
+
 <div class="card">
   <h3>账号列表</h3>
   <table>
-    <thead><tr><th>名称</th><th>用户名</th><th>状态</th><th>操作</th></tr></thead>
+    <thead><tr><th>ID</th><th>名称</th><th>地址</th><th>用户名</th><th>状态</th><th>操作</th></tr></thead>
     <tbody>
-    <% accounts.forEach(a => { %>
-      <tr>
-        <td><%= a.label %></td>
-        <td><%= a.username %></td>
-        <td><%= a.is_active ? '✅ 当前使用' : '-' %></td>
-        <td>
-          <% if (!a.is_active) { %>
-          <form method="POST" action="/accounts/activate" style="display:inline">
-            <input type="hidden" name="id" value="<%= a.id %>">
-            <button type="submit" class="btn btn-blue btn-sm">设为激活</button>
-          </form>
-          <% } %>
-          <form method="POST" action="/accounts/delete" style="display:inline" onsubmit="return confirm('确认删除？')">
-            <input type="hidden" name="id" value="<%= a.id %>">
-            <button type="submit" class="btn btn-red btn-sm">删除</button>
-          </form>
-        </td>
-      </tr>
-    <% }) %>
+      <% accounts.forEach(a => { %>
+        <tr>
+          <td><%= a.id %></td>
+          <td><%= a.label %></td>
+          <td><%= a.base_url %></td>
+          <td><%= a.username %></td>
+          <td>
+            <% if (a.is_active) { %>
+              <span style="color:green">● 当前使用</span>
+            <% } else { %>
+              <span style="color:#999">备用</span>
+            <% } %>
+          </td>
+          <td>
+            <form method="POST" action="/accounts/activate" style="display:inline">
+              <input type="hidden" name="id" value="<%= a.id %>">
+              <button type="submit" class="btn btn-sm <%= a.is_active ? 'btn-gray' : 'btn-blue' %>">
+                <%= a.is_active ? '使用中' : '切换' %>
+              </button>
+            </form>
+            <form method="POST" action="/accounts/test" style="display:inline" target="_blank">
+              <input type="hidden" name="id" value="<%= a.id %>">
+              <button type="submit" class="btn btn-sm btn-blue">测试</button>
+            </form>
+            <form method="POST" action="/accounts/delete" style="display:inline" onsubmit="return confirm('确认删除？')">
+              <input type="hidden" name="id" value="<%= a.id %>">
+              <button type="submit" class="btn btn-sm btn-red">删除</button>
+            </form>
+          </td>
+        </tr>
+      <% }) %>
     </tbody>
   </table>
 </div>

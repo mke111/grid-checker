@@ -1,26 +1,24 @@
 <h2>系统设置</h2>
+
 <div class="card">
-  <form method="POST" action="/settings">
-    <div class="form-group">
-      <label>检查开始时间</label>
-      <input type="time" name="check_start" value="<%= settings.check_start || '08:00' %>">
-    </div>
-    <div class="form-group">
-      <label>检查结束时间</label>
-      <input type="time" name="check_end" value="<%= settings.check_end || '20:00' %>">
-    </div>
-    <div class="form-group">
-      <label>每日通知时间（北京时间）</label>
-      <input type="time" name="notify_time" value="<%= settings.notify_time || '20:00' %>">
-    </div>
-    <div class="form-group">
-      <label>Webhook 通知地址（企业微信/钉钉）</label>
-      <input type="url" name="notify_webhook" value="<%= settings.notify_webhook || '' %>" placeholder="https://qyapi.weixin.qq.com/...">
-    </div>
-    <div class="form-group">
-      <label>目标系统地址</label>
-      <input type="text" name="target_url" value="<%= settings.target_url || 'http://221.181.9.210:17027' %>">
-    </div>
-    <button type="submit" class="btn btn-green">保存设置</button>
+  <h3>检查时间设置</h3>
+  <form method="POST" action="/settings" class="form-group">
+    <label>检查开始时间</label>
+    <input type="time" name="check_start" value="<%= settings.check_start || '08:00' %>">
+    <label>检查结束时间</label>
+    <input type="time" name="check_end" value="<%= settings.check_end || '20:00' %>">
+    <button type="submit" class="btn btn-green">保存</button>
   </form>
+</div>
+
+<div class="card">
+  <h3>自动通知设置</h3>
+  <form method="POST" action="/settings" class="form-group">
+    <label>通知时间（每天自动执行）</label>
+    <input type="time" name="notify_time" value="<%= settings.notify_time || '20:00' %>">
+    <label>Webhook 地址（可选，通知发送到指定URL）</label>
+    <input type="text" name="notify_webhook" value="<%= settings.notify_webhook || '' %>" placeholder="https://...">
+    <button type="submit" class="btn btn-green">保存</button>
+  </form>
+  <p class="hint">通知时间应为目标系统第二天数据生成后，建议 20:00</p>
 </div>
