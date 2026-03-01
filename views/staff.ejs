@@ -1,85 +1,122 @@
-<h2>人员管理</h2>
-
-<div class="card">
-  <h3>添加人员</h3>
-  <form method="POST" action="/staff/add" class="inline-form">
-    <input type="text" name="name" placeholder="姓名" required>
-    <input type="text" name="phone" placeholder="手机号">
-    <input type="text" name="department" placeholder="部门">
-    <input type="text" name="position" placeholder="职务">
-    <button type="submit" class="btn btn-green">添加</button>
-  </form>
-</div>
-
-<div class="card">
-  <h3>从目标系统同步</h3>
-  <form method="POST" action="/staff/sync" target="_blank">
-    <button type="submit" class="btn btn-blue">同步今日人员</button>
-  </form>
-  <p class="hint">从目标系统获取今日有记录的人员，添加到本地</p>
-</div>
-
-<div class="card">
-  <h3>批量操作</h3>
-  <form method="POST" action="/staff/batch-status" class="inline-form">
-    <input type="date" name="date" value="<%= date %>">
-    <button type="submit" name="status" value="oncall" class="btn btn-green">全部在岗</button>
-    <button type="submit" name="status" value="leave" class="btn btn-gray">全部休假</button>
-  </form>
-</div>
-
-<div class="card">
-  <h3>搜索</h3>
-  <form method="GET" action="/staff" class="inline-form">
-    <input type="text" name="q" placeholder="姓名或手机号" value="<%= q %>">
-    <button type="submit" class="btn btn-blue">搜索</button>
-  </form>
-</div>
-
-<div class="card">
-  <h3>Excel 导入</h3>
-  <form method="POST" action="/staff/import" enctype="multipart/form-data" class="inline-form">
-    <input type="file" name="file" accept=".xlsx,.xls" required>
-    <button type="submit" class="btn btn-blue">导入</button>
-  </form>
-  <p class="hint">Excel 需包含"姓名"列（可选：手机号、部门、职务）</p>
-</div>
-
-<div class="card">
-  <h3>人员列表（<%= date %>）</h3>
-  <table>
-    <thead><tr><th>姓名</th><th>手机号</th><th>部门</th><th>职务</th><th>状态</th><th>操作</th></tr></thead>
-    <tbody>
-      <% if (staff.length === 0) { %>
-        <tr><td colspan="6" style="text-align:center;color:#888">暂无人员，请添加或从目标系统同步</td></tr>
-      <% } %>
-      <% staff.forEach(s => { %>
-        <tr>
-          <td><%= s.name %></td>
-          <td><%= s.phone || '-' %></td>
-          <td><%= s.department || '-' %></td>
-          <td><%= s.position || '-' %></td>
-          <td>
-            <form method="POST" action="/staff/status" style="display:inline">
-              <input type="hidden" name="staff_id" value="<%= s.id %>">
-              <input type="hidden" name="date" value="<%= date %>">
-              <% if (s.status === 'oncall') { %>
-                <input type="hidden" name="status" value="leave">
-                <button type="submit" class="btn btn-green btn-sm">在岗</button>
-              <% } else { %>
-                <input type="hidden" name="status" value="oncall">
-                <button type="submit" class="btn btn-gray btn-sm">休假</button>
-              <% } %>
-            </form>
-          </td>
-          <td>
-            <form method="POST" action="/staff/delete" style="display:inline" onsubmit="return confirm('删除？')">
-              <input type="hidden" name="id" value="<%= s.id %>">
-              <button type="submit" class="btn btn-red btn-sm">删</button>
-            </form>
-          </td>
-        </tr>
-      <% }) %>
-    </tbody>
-  </table>
-</div>
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>人员管理</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #f5f7fa; }
+    .header { background: #2d7a4f; color: white; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; }
+    .header h1 { font-size: 20px; }
+    .nav a { color: white; text-decoration: none; margin-left: 20px; opacity: 0.9; }
+    .container { max-width: 900px; margin: 24px auto; padding: 0 16px; }
+    .card { background: white; border-radius: 12px; padding: 24px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0.1);0,0, }
+    h2 { margin-bottom: 16px; color: #333; }
+    .form-inline { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
+    input, select, button { padding: 10px 14px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
+    button { cursor: pointer; border: none; }
+    .btn-green { background: #27ae60; color: white; }
+    .btn-blue { background: #3498db; color: white; }
+    .btn-red { background: #e74c3c; color: white; }
+    .btn-gray { background: #95a5a6; color: white; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
+    th { background: #f8f9fa; font-weight: 600; }
+    .status-oncall { background: #d4edda; color: #155724; padding: 4px 8px; border-radius: 4px; }
+    .status-leave { background: #f8d7da; color: #721c24; padding: 4px 8px; border-radius: 4px; }
+    .hint { color: #666; font-size: 13px; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>📋 网格化检查系统</h1>
+    <div class="nav">
+      <a href="/">首页</a>
+      <a href="/staff">人员管理</a>
+      <a href="/accounts">账号管理</a>
+      <a href="/settings">设置</a>
+    </div>
+  </div>
+  
+  <div class="container">
+    <h2>人员管理 - <%= today %></h2>
+    
+    <div class="card">
+      <h3>添加人员</h3>
+      <form method="POST" action="/staff/add" class="form-inline">
+        <input type="text" name="name" placeholder="姓名 *" required style="width:120px">
+        <input type="text" name="phone" placeholder="手机号" style="width:140px">
+        <input type="text" name="department" placeholder="部门" style="width:160px">
+        <input type="text" name="position" placeholder="职务" style="width:160px">
+        <button type="submit" class="btn btn-green">添加</button>
+      </form>
+    </div>
+    
+    <div class="card">
+      <h3>批量操作</h3>
+      <form method="POST" action="/staff/batch" class="form-inline">
+        <input type="date" name="date" value="<%= today %>">
+        <button type="submit" name="status" value="oncall" class="btn btn-green">全部在岗</button>
+        <button type="submit" name="status" value="leave" class="btn btn-gray">全部休假</button>
+      </form>
+    </div>
+    
+    <div class="card">
+      <h3>搜索</h3>
+      <form method="GET" action="/staff" class="form-inline">
+        <input type="text" name="q" placeholder="姓名或手机号" value="<%= q %>">
+        <button type="submit" class="btn btn-blue">搜索</button>
+        <a href="/staff" class="btn btn-gray">清除</a>
+      </form>
+    </div>
+    
+    <div class="card">
+      <h3>Excel导入</h3>
+      <form method="POST" action="/staff/import" enctype="multipart/form-data" class="form-inline">
+        <input type="file" name="file" accept=".xlsx,.xls">
+        <button type="submit" class="btn btn-blue">导入</button>
+      </form>
+      <p class="hint">Excel需包含"姓名"列（可选：手机号、部门、职务）</p>
+    </div>
+    
+    <div class="card">
+      <h3>人员列表 (<%= staff.length %>人)</h3>
+      <table>
+        <thead><tr><th>姓名</th><th>手机号</th><th>部门</th><th>职务</th><th>状态</th><th>操作</th></tr></thead>
+        <tbody>
+          <% if (staff.length === 0) { %>
+            <tr><td colspan="6" style="text-align:center;color:#999">暂无人员</td></tr>
+          <% } %>
+          <% staff.forEach(s => { %>
+            <tr>
+              <td><%= s.name %></td>
+              <td><%= s.phone || '-' %></td>
+              <td><%= s.department || '-' %></td>
+              <td><%= s.position || '-' %></td>
+              <td>
+                <form method="POST" action="/staff/status" style="display:inline">
+                  <input type="hidden" name="id" value="<%= s.id %>">
+                  <input type="hidden" name="date" value="<%= today %>">
+                  <% if (s.status === 'oncall') { %>
+                    <input type="hidden" name="status" value="leave">
+                    <button type="submit" class="status-oncall">在岗</button>
+                  <% } else { %>
+                    <input type="hidden" name="status" value="oncall">
+                    <button type="submit" class="status-leave">休假</button>
+                  <% } %>
+                </form>
+              </td>
+              <td>
+                <form method="POST" action="/staff/delete" style="display:inline" onsubmit="return confirm('确认删除?')">
+                  <input type="hidden" name="id" value="<%= s.id %>">
+                  <button type="submit" class="btn btn-red btn-sm">删除</button>
+                </form>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</body>
+</html>
